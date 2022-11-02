@@ -18,18 +18,22 @@ package com.example.android.eggtimernotifications.ui
 
 import android.app.AlarmManager
 import android.app.Application
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.CountDownTimer
 import android.os.SystemClock
 import androidx.core.app.AlarmManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.android.eggtimernotifications.R
 import com.example.android.eggtimernotifications.receiver.AlarmReceiver
+import com.example.android.eggtimernotifications.util.PendingIntentCompat
+import com.example.android.eggtimernotifications.util.cancelNotifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,6 +47,9 @@ class EggTimerViewModel(private val app: Application) : AndroidViewModel(app) {
     private val notifyPendingIntent: PendingIntent
 
     private val alarmManager = app.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val notificationManager: NotificationManager by lazy {
+        ContextCompat.getSystemService(app, NotificationManager::class.java) as NotificationManager
+    }
     private var prefs =
         app.getSharedPreferences("com.example.android.eggtimernotifications", Context.MODE_PRIVATE)
     private val notifyIntent = Intent(app, AlarmReceiver::class.java)
@@ -67,14 +74,14 @@ class EggTimerViewModel(private val app: Application) : AndroidViewModel(app) {
             getApplication(),
             REQUEST_CODE,
             notifyIntent,
-            PendingIntent.FLAG_NO_CREATE
+            PendingIntent.FLAG_NO_CREATE or PendingIntentCompat.FLAG_IMMUTABLE
         ) != null
 
         notifyPendingIntent = PendingIntent.getBroadcast(
             getApplication(),
             REQUEST_CODE,
             notifyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntentCompat.FLAG_IMMUTABLE
         )
 
         timerLengthOptions = app.resources.getIntArray(R.array.minutes_array)
@@ -111,31 +118,29 @@ class EggTimerViewModel(private val app: Application) : AndroidViewModel(app) {
      * Creates a new alarm, notification and timer
      */
     private fun startTimer(timerLengthSelection: Int) {
-        _alarmOn.value?.let {
-            if (!it) {
-                _alarmOn.value = true
-                val selectedInterval = when (timerLengthSelection) {
-                    0 -> second * 10 //For testing only
-                    else ->timerLengthOptions[timerLengthSelection] * minute
-                }
-                val triggerTime = SystemClock.elapsedRealtime() + selectedInterval
+        if (_alarmOn.value != true) {
+            _alarmOn.value = true
+            val selectedInterval = when (timerLengthSelection) {
+                0 -> second * 10 // For testing only
+                else -> timerLengthOptions[timerLengthSelection] * minute
+            }
 
-                // TODO: Step 1.5 get an instance of NotificationManager and call sendNotification
+            val triggerTime = SystemClock.elapsedRealtime() + selectedInterval
 
-                // TODO: Step 1.15 call cancel notification
+            notificationManager.cancelNotifications()
 
-                AlarmManagerCompat.setExactAndAllowWhileIdle(
-                    alarmManager,
-                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    triggerTime,
-                    notifyPendingIntent
-                )
+            AlarmManagerCompat.setExactAndAllowWhileIdle(
+                alarmManager,
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                triggerTime,
+                notifyPendingIntent
+            )
 
-                viewModelScope.launch {
-                    saveTime(triggerTime)
-                }
+            viewModelScope.launch {
+                saveTime(triggerTime)
             }
         }
+
         createTimer()
     }
 

@@ -20,9 +20,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import androidx.core.app.NotificationCompat
 import com.example.android.eggtimernotifications.MainActivity
 import com.example.android.eggtimernotifications.R
+import com.example.android.eggtimernotifications.receiver.SnoozeReceiver
 
 // Notification ID.
 private const val NOTIFICATION_ID = 0
@@ -37,22 +39,31 @@ private const val FLAGS = 0
  * @param applicationContext application's context.
  */
 fun NotificationManager.sendNotification(messageBody: String, applicationContext: Context) {
-    // Create the content intent for the notification, which launches
-    // this activity
-    // TODO: Step 1.11 create intent
-    val intent = Intent(applicationContext, MainActivity::class.java)
+    val intentToOpenActivity = Intent(applicationContext, MainActivity::class.java)
 
-    // TODO: Step 1.12 create PendingIntent
-    val pendingIntent = PendingIntent.getActivity(
+    val pendingIntentToOpenActivity = PendingIntent.getActivity(
         applicationContext,
         REQUEST_CODE,
-        intent,
+        intentToOpenActivity,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntentCompat.FLAG_IMMUTABLE
     )
 
-    // TODO: Step 2.0 add style
+    val eggImage = BitmapFactory.decodeResource(
+        applicationContext.resources,
+        R.drawable.cooked_egg
+    )
 
-    // TODO: Step 2.2 add snooze action
+    val style = NotificationCompat.BigPictureStyle()
+        .bigPicture(eggImage)
+        .bigLargeIcon(null)
+
+    val intentToSnooze = Intent(applicationContext, SnoozeReceiver::class.java)
+    val pendingIntentToSnooze = PendingIntent.getBroadcast(
+        applicationContext,
+        REQUEST_CODE,
+        intentToSnooze,
+        PendingIntent.FLAG_ONE_SHOT or PendingIntentCompat.FLAG_IMMUTABLE
+    )
 
     val builder = NotificationCompat.Builder(
         applicationContext,
@@ -66,7 +77,15 @@ fun NotificationManager.sendNotification(messageBody: String, applicationContext
         .setSmallIcon(R.drawable.cooked_egg)
         .setContentTitle(applicationContext.getString(R.string.notification_title))
         .setContentText(messageBody)
-        .setContentIntent(pendingIntent)
+        .setLargeIcon(eggImage)
+        .setStyle(style)
+        .addAction(
+            R.drawable.egg_icon,
+            applicationContext.getString(R.string.snooze),
+            pendingIntentToSnooze
+        )
+        .setContentIntent(pendingIntentToOpenActivity)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setAutoCancel(true)
 
     // TODO: Step 2.1 add style to builder

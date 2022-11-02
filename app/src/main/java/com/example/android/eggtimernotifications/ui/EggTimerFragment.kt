@@ -16,6 +16,7 @@
 
 package com.example.android.eggtimernotifications.ui
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.graphics.Color
@@ -34,8 +35,8 @@ import com.example.android.eggtimernotifications.databinding.FragmentEggTimerBin
 class EggTimerFragment : Fragment() {
     private val viewModel by viewModels<EggTimerViewModel>()
 
-    private val requestToPostNotifications = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
+    private val requestForAllNecessaryPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
     ) callback@{ _ ->
         // Implementation is not user-friendly because codelab provided by google is not prepared
         // for simple handling of POST_NOTIFICATIONS permission
@@ -63,7 +64,7 @@ class EggTimerFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requestSystemToPostNotifications()
+        requestAllNecessaryPermissions()
     }
 
     private fun createChannel(channelId: String, channelName: String) {
@@ -74,12 +75,13 @@ class EggTimerFragment : Fragment() {
         val notificationChannel = NotificationChannel(
             channelId,
             channelName,
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             enableLights(true)
             lightColor = Color.RED
             enableVibration(true)
             description = "Time for breakfast"
+            setShowBadge(false)
         }
 
         val notificationManager =
@@ -88,10 +90,22 @@ class EggTimerFragment : Fragment() {
         notificationManager.createNotificationChannel(notificationChannel)
     }
 
-    private fun requestSystemToPostNotifications() {
+    private fun requestAllNecessaryPermissions() {
+        requestForAllNecessaryPermissions.launch(getListOfAllNecessaryPermissions())
+    }
+
+    private fun getListOfAllNecessaryPermissions(): Array<String> {
+        val permissions = arrayListOf<String>()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestToPostNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissions.add(Manifest.permission.SCHEDULE_EXACT_ALARM)
+        }
+
+        return permissions.toTypedArray()
     }
 
     companion object {

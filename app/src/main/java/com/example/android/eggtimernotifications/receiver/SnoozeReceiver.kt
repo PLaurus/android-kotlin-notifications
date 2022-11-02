@@ -17,6 +17,7 @@
 package com.example.android.eggtimernotifications.receiver
 
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -24,11 +25,14 @@ import android.content.Intent
 import android.os.SystemClock
 import android.text.format.DateUtils
 import androidx.core.app.AlarmManagerCompat
+import androidx.core.content.ContextCompat
 import com.example.android.eggtimernotifications.util.PendingIntentCompat
 
 class SnoozeReceiver: BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val triggerTime = SystemClock.elapsedRealtime() + DateUtils.MINUTE_IN_MILLIS
+        cancelNotification(context)
+
+        val triggerTime = SystemClock.elapsedRealtime() + 3 * DateUtils.SECOND_IN_MILLIS
 
         val notifyIntent = Intent(context, AlarmReceiver::class.java)
         val notifyPendingIntent = PendingIntent.getBroadcast(
@@ -38,13 +42,36 @@ class SnoozeReceiver: BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntentCompat.FLAG_IMMUTABLE
         )
 
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val alarmManager = requireAlarmManager(context)
         AlarmManagerCompat.setExactAndAllowWhileIdle(
             alarmManager,
             AlarmManager.ELAPSED_REALTIME_WAKEUP,
             triggerTime,
             notifyPendingIntent
         )
+    }
+
+    private fun requireNotificationManager(
+        context: Context
+    ): NotificationManager {
+        val notificationManager = ContextCompat.getSystemService(
+            context,
+            NotificationManager::class.java
+        )
+
+        return requireNotNull(notificationManager)
+    }
+
+    private fun requireAlarmManager(
+        context: Context
+    ): AlarmManager {
+        val alarmManager = ContextCompat.getSystemService(context, AlarmManager::class.java)
+        return requireNotNull(alarmManager)
+    }
+
+    private fun cancelNotification(context: Context) {
+        val notificationManager = requireNotificationManager(context)
+        notificationManager.cancelAll()
     }
 
     companion object {
